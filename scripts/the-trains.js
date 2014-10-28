@@ -142,8 +142,19 @@ VIZ.requiresData([
       text: 'Outbound clumps continue regardless of the time of day.'
     },
     {
-      time: '2014/10/24 11:45',
-      text: 'The outbound B branch experiences several 30-45 minute waits between consecutive trains on Friday afternoon, while the other branches continue to run consistently.'
+      time: '2014/10/24 12:15',
+      text: 'The outbound B branch experiences several 30-45 minute waits between consecutive trains on Friday afternoon, while the other branches continue to run consistently.',
+      connections: [{
+        start: '2014/10/24 11:31',
+        stop: '2014/10/24 12:15',
+        station: 'boston college',
+        line: 'green-b'
+      }, {
+        start: '2014/10/24 13:25',
+        stop: '2014/10/24 14:00',
+        station: 'boston college',
+        line: 'green-b'
+      }]
     },
     {
       time: '2014/10/25 01:00',
