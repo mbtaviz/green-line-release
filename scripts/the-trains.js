@@ -46,11 +46,11 @@ VIZ.requiresData([
     },
     {
       time: '2014/10/23 12:00',
-      text: 'At noon on Thursday, October 23rd 2014 the MBTA began publishing live output from a new system that provides train locations for the Green Line.'
+      text: 'At noon on Thursday, October 23rd 2014 the MBTA began publishing live output from a new system that provides train location data for the Green Line.'
     },
     {
       time: '2014/10/23 13:50',
-      text: 'The new system uses GPS to locate each train. The signal disappears when trains go below ground on the main trunk and first several stops of each branch. <br> <br> The next phase of their project will include location information for underground trains.',
+      text: 'The new system uses GPS to locate each train. The signal disappears when trains go below ground on the main trunk and first several stops of each branch. <br> <br> They are adding GPS tracking to the final trains now and the next phase of their project will include location information for underground trains.',
       connections: [{
         time: '2014/10/23 14:00',
         station: 'kenmore',
@@ -88,16 +88,6 @@ VIZ.requiresData([
         time: '2014/10/23 17:04',
         station: 'fairbanks street',
         line: 'green-c'
-      }]
-    },
-    {
-      time: '2014/10/23 18:45',
-      text: 'Gaps between outbound trains cause long waits for inbound passengers. This 30 minute gap occurred when there were no available trains at Boston College to take passengers inbound.',
-      connections: [{
-        start: '2014/10/23 18:44',
-        stop: '2014/10/23 19:17',
-        station: 'boston college',
-        line: 'green-b'
       }]
     },
     {
@@ -140,21 +130,6 @@ VIZ.requiresData([
     {
       time: '2014/10/24 10:30',
       text: 'Outbound clumps continue regardless of the time of day.'
-    },
-    {
-      time: '2014/10/24 12:15',
-      text: 'The outbound B branch experiences several 30-45 minute waits between consecutive trains on Friday afternoon, while the other branches continue to run consistently.',
-      connections: [{
-        start: '2014/10/24 11:31',
-        stop: '2014/10/24 12:15',
-        station: 'boston college',
-        line: 'green-b'
-      }, {
-        start: '2014/10/24 13:25',
-        stop: '2014/10/24 14:00',
-        station: 'boston college',
-        line: 'green-b'
-      }]
     },
     {
       time: '2014/10/25 01:00',
