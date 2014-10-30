@@ -130,6 +130,42 @@
       opacity: 1;
     }
   }
+  
+
+  // The lined-up marey diagram
+  .lined-up-marey {
+    .y.axis .tick line {
+      stroke: #eee;
+    }
+    .mareyline {
+      opacity: 0.1;
+    }
+    .mareyline.highlight {
+      opacity: 1 !important;
+      stroke-width: 3px;
+    }
+    .mareyline.dimmed {
+      opacity: 0.02 !important;
+      stroke: black;
+    }
+    .mareyarea {
+      fill: black;
+      opacity: 0.05;
+    }
+    .mareystop {
+      fill: black;
+    }
+    .mareynames text {
+      font-size: 10px;
+    }
+    .brush-highlighted {
+      opacity: 0.8;
+    }
+    .brush-dimmed {
+      opacity: 0.05;
+      stroke: desaturate(@green-line, 40%);
+    }
+  }
 
   .line-dimmed {
     opacity: 0.1 !important;

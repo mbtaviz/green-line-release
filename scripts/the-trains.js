@@ -8,10 +8,12 @@
  *
  * 1. Load the required data and do some pre-processing
  * 2. Render the side map glyph that shows locations of trains at a point in time
- * 3. Set up the scaffolding for Marey diagram
+ * 3. Set up the scaffolding for lined-up and full Marey diagrams
  * 4. On load and when the screen width changes:
  *   4a. Render the full Marey
  *   4b. Render annotations for the full Marey
+ *   4c. Render the lined-up Marey
+ *   4d. Set up listener to zoom in on a particular trip of the lined-up marey when user clicks on it
  * 5. Add interaction behavior with surrounding text
  *
  * Interaction is added to all elements throughout as they are rendered.
@@ -328,10 +330,11 @@ VIZ.requiresData([
 
 
 
-  /* 3. Set up the scaffolding for the Marey diagram
+  /* 3. Set up the scaffolding for lined-up and full Marey diagrams
    *************************************************************/
   var marey = d3.select(".marey").text('').style('text-align', 'left').append('svg');
   var mareyContainer = d3.select('.marey-container').classed('loading', false);
+  d3.select(".lined-up-marey").text('');
   var timeDisplay = mareyContainer.selectAll('.marey-time');
   var dateDisplay = mareyContainer.selectAll('.marey-date');
   var tip = d3.tip()
@@ -339,7 +342,87 @@ VIZ.requiresData([
       .offset([-10, 0])
       .html(function(d) { return d.name; });
   marey.call(tip);
+  var linedUpMargin = {top: 50, right: 40, bottom: 60, left: 80};
+  var linedUpOuterHeight = 430;
+  var linedUpHeight = linedUpOuterHeight - linedUpMargin.top - linedUpMargin.bottom;
+  var linedUpDayScale = d3.time.scale()
+    .domain([0, 24 * 60 * 60 * 1000])
+    .range([0, linedUpHeight])
+    .clamp(true);
+  var brush = d3.svg.brush()
+      .y(linedUpDayScale)
+      .extent([7 * 60 * 60 * 1000, 9 * 60 * 60 * 1000])
+      .clamp(true)
+      .on("brush", brushed);
   d3.select('body').on('click.highlightoff', function () { highlightedTrip = null; highlight(); });
+
+  // lined-up Marey diagram costants used to position the starting points of each trip
+  // as well as orient the labels that describe each line
+  var linedUpMareyStartingStationLabels = {
+    'place-bland': {text: "Blandford", anchor: "start"},
+    'place-lake': {text: "Boston College", anchor: "end"},
+    'place-smary': {text: "St. Mary", anchor: "start"},
+    'place-clmnl': {text: "Cleveland Circle", anchor: "end"},
+    'place-fenwy': {text: "Fenway", anchor: "start"},
+    'place-river': {text: "Riverside", anchor: "end"},
+    'place-nuniv': {text: "Northeastern", anchor: "start"},
+    'place-hsmnl': {text: "Heath", anchor: "end"}
+  };
+  var linedUpMareyStartingStations = Object.keys(linedUpMareyStartingStationLabels);
+  var linedUpXScale = d3.scale.ordinal()
+      .domain(linedUpMareyStartingStations);
+  var maxLinedUpMareyChartWidth = 970;
+  var betweenStarts = 0.02;
+  var betweenEnds = 0.07;
+  var linedUpMareyXScaleRatioFromFullMarey = 0.82 * (1 - betweenEnds * 4 - betweenStarts * 3);
+  var originalLinedUpMareyXScaleRatioFromFullMarey = linedUpMareyXScaleRatioFromFullMarey;
+  var linedUpMareyLineEndPositions = (function calcPlacement() {
+    var bStops = _.max(trips, function (d) { return d.stops[0].stop === 'place-bland' ? d.stops.length : 0; }).stops.length - 4;
+    var cStops = _.max(trips, function (d) { return d.stops[0].stop === 'place-smary' ? d.stops.length : 0; }).stops.length - 4;
+    var dStops = _.max(trips, function (d) { return d.stops[0].stop === 'place-fenwy' ? d.stops.length : 0; }).stops.length - 4;
+    var eStops = _.max(trips, function (d) { return d.stops[0].stop === 'place-nuniv' ? d.stops.length : 0; }).stops.length - 4;
+    var totalStops = bStops + cStops + dStops + eStops;
+    var forLines = (1 - betweenEnds * 4 - betweenStarts * 3);
+    var bAllocation = forLines * bStops / totalStops / 2;
+    var cAllocation = forLines * cStops / totalStops / 2;
+    var dAllocation = forLines * dStops / totalStops / 2;
+    var eAllocation = forLines * eStops / totalStops / 2;
+    var diffs = [
+      0,
+      bAllocation * 2 + betweenEnds,
+      betweenStarts,
+      cAllocation * 2 + betweenEnds,
+      betweenStarts,
+      dAllocation * 2 + betweenEnds,
+      betweenStarts,
+      eAllocation * 2 + betweenEnds
+    ];
+    diffs.forEach(function (d, i) {
+      diffs[i] = (i === 0 ? 0 : diffs[i - 1]) + d;
+    });
+    return diffs;
+  }());
+  var linedUpMareyMidpointLabelPositions = [
+    d3.mean([linedUpMareyLineEndPositions[0], linedUpMareyLineEndPositions[1]]),
+    d3.mean([linedUpMareyLineEndPositions[0], linedUpMareyLineEndPositions[1]]),
+    d3.mean([linedUpMareyLineEndPositions[2], linedUpMareyLineEndPositions[3]]),
+    d3.mean([linedUpMareyLineEndPositions[2], linedUpMareyLineEndPositions[3]]),
+    d3.mean([linedUpMareyLineEndPositions[4], linedUpMareyLineEndPositions[5]]),
+    d3.mean([linedUpMareyLineEndPositions[4], linedUpMareyLineEndPositions[5]]),
+    d3.mean([linedUpMareyLineEndPositions[6], linedUpMareyLineEndPositions[7]]),
+    d3.mean([linedUpMareyLineEndPositions[6], linedUpMareyLineEndPositions[7]]),
+  ];
+  var linedUpTrips = trips.filter(function (trip) {
+    return _.contains(linedUpMareyStartingStations, trip.stops[0].stop);
+  });
+  var linedUpYScale = d3.scale.linear()
+    .domain([0, d3.max(linedUpTrips, function (trip) {
+      return trip.stops[trip.stops.length - 1].time - trip.stops[0].time;
+    })]);
+  var linedUpTimeScale = d3.time.scale()
+    .domain([0, d3.max(linedUpTrips, function (trip) {
+      return 1000 * (trip.stops[trip.stops.length - 1].time - trip.stops[0].time);
+    })]);
 
 
 
@@ -351,7 +434,9 @@ VIZ.requiresData([
    * or returns the existing element if it already exists.
    *************************************************************/
    // first some state shared across re-renderings
+  var frozen = false;
   var showingMap = false;
+  var highlightedLinedUpMarey = null;
   var highlightedTrip = null;
   var hoveredTrip = null;
   var lastWidth = null;
@@ -560,7 +645,7 @@ VIZ.requiresData([
     }
 
     // Get a list of [x, y] coordinates for all train trips for
-    // both the Marey Diagram
+    // both the full Marey and the lined-up Marey
     function getPointsFromStop(xScale, yScale, d, relative) {
       var flattenedStops = d.stops;
       var startX = xScale(header[d.stops[0].stop + '|' + d.line][0]);
@@ -717,6 +802,403 @@ VIZ.requiresData([
           return path;
         });
     });
+
+
+
+
+
+    /* 4c. Render the lined-up Marey
+     *************************************************************/
+    resetScale(linedUpYScale);
+    resetScale(linedUpXScale);
+    resetScale(linedUpTimeScale);
+    linedUpMareyXScaleRatioFromFullMarey = originalLinedUpMareyXScaleRatioFromFullMarey;
+    var linedUpOuterWidth = Math.min($('.lined-up-marey-container .container').width(), maxLinedUpMareyChartWidth);
+    var linedUpWidth = linedUpOuterWidth - linedUpMargin.left - linedUpMargin.right;
+    linedUpOuterHeight = linedUpOuterWidth * 300 / 780;
+    linedUpHeight = linedUpOuterHeight - linedUpMargin.top - linedUpMargin.bottom;
+    linedUpDayScale.range([0, linedUpHeight]);
+    linedUpYScale.range([0, linedUpHeight]);
+    var linedUpSvg = d3.select('.lined-up-marey').appendOnce('svg', 'lined-up')
+        .attr('width', linedUpOuterWidth)
+        .attr('height', linedUpOuterHeight);
+    var linedUp = linedUpSvg.appendOnce('g', 'g');
+    var linedUpOverlay = linedUpSvg.appendOnce('g', 'overlay');
+    linedUp.firstTime.attr('transform', 'translate(' + linedUpMargin.left + ',' + linedUpMargin.top + ')');
+    linedUpOverlay.firstTime.attr('transform', 'translate(' + linedUpMargin.left + ',' + linedUpMargin.top + ')');
+    linedUpXScale.range(linedUpMareyLineEndPositions.map(function (d) { return d * linedUpWidth; }));
+    var linedUpXPlacementScale = d3.scale.ordinal()
+        .domain(linedUpMareyStartingStations)
+        .range(linedUpMareyMidpointLabelPositions.map(function (d) { return d * linedUpWidth; }));
+    linedUpYScale.range([0, linedUpHeight]);
+    linedUpTimeScale.range([0, linedUpHeight]);
+
+    var linedUpDayAxis = d3.svg.axis()
+      .scale(linedUpDayScale)
+      .tickFormat(d3.time.format.utc("%-I %p"))
+      .orient('left')
+      .ticks(d3.time.hour, 2);
+
+    var brushAxis = linedUp.appendOnce('g', 'time axis')
+      .attr('transform', 'translate(-40,0)')
+      .call(linedUpDayAxis);
+
+    brushAxis.on('mousemove.brush', function () {
+      var y = d3.mouse(brushAxis.node())[1];
+      var time = linedUpDayScale.invert(y);
+      brush.extent([time.getTime() - 60 * 60 * 1000, time.getTime() + 60 * 60 * 1000]);
+      d3.selectAll('g.brush').call(brush).on('mousedown.brush', null).on('touchstart.brush', null);
+      brushed();
+    });
+
+    brushAxis.appendOnce("g", "brush").firstTime
+        .call(brush)
+        .call(brushed)
+        .on('mousedown.brush', null).on('touchstart.brush', null)
+      .selectAll("rect")
+        .attr("x", -45)
+        .attr("width", 50);
+
+
+    var linedUpAxis = d3.svg.axis()
+      .tickFormat(function (d) { return Math.round(d / 1000 / 60) + 'm'; })
+      .innerTickSize(-linedUpWidth)
+      .outerTickSize(0)
+      .ticks(d3.time.minutes, 10)
+      .scale(linedUpTimeScale)
+      .orient("left");
+
+    var axis = linedUp.appendOnce('g', 'y axis')
+      .call(linedUpAxis);
+
+    axis.appendOnce('text', 'label light-markup')
+      .attr('transform', 'rotate(90)translate(' + (linedUpHeight/2) + ',-5)')
+      .attr('text-anchor', 'middle')
+      .text('minutes since start of trip');
+
+    linedUp.appendOnce('text', 'top-label light-markup')
+      .text('Starting Station')
+      .attr('text-anchor', 'middle')
+      .attr('x', linedUpWidth /2)
+      .attr('y', -34);
+    linedUp.appendOnce('text', 'bottom-label light-markup')
+      .text('Ending Station')
+      .attr('text-anchor', 'middle')
+      .attr('x', linedUpWidth /2)
+      .attr('y', linedUpHeight + 30);
+    var stationHeaders = linedUp.selectAll('.station-header')
+        .data(linedUpMareyStartingStations.filter(function (d) { return linedUpMareyStartingStationLabels[d].text; }));
+    stationHeaders
+        .enter()
+      .append('g')
+        .attr('class', 'station-header')
+      .append('text')
+        .attr('text-anchor', function (d) {
+          return linedUpMareyStartingStationLabels[d].anchor;
+        })
+        .attr('dx', function (d) {
+          return linedUpMareyStartingStationLabels[d].anchor === 'start' ? -4 : 4;
+        })
+        .attr('dy', -2)
+        .text(function (d) {
+          return linedUpMareyStartingStationLabels[d].text;
+        });
+    function placeStationHeader(selection) {
+      selection
+          .attr('transform', function (d) {
+            return 'translate(' + linedUpXScale(d) + ',-10)';
+          });
+    }
+    stationHeaders.call(placeStationHeader);
+
+    var linedUpMareyContainer = linedUp.appendOnce('g', 'mareylinecontainer');
+    linedUpMareyContainer.firstTime.attr('clip-path', 'url(#mareyClip)');
+    linedUp
+      .appendOnce('defs', 'defs')
+      .appendOnce('clipPath', 'clip')
+        .attr('id', 'mareyClip')
+      .appendOnce('rect', 'clipRect')
+        .attr('width', linedUpWidth)
+        .attr('height', linedUpHeight);
+
+    var linedUpMareyLines = linedUpMareyContainer.selectAll('.mareyline')
+        .data(linedUpTrips, function (d) { return d.trip; });
+
+    var t = null;
+    if (!VIZ.ios) {
+      linedUp
+          .off('mouseover mouseout')
+          .onOnce('mouseover', 'path', function (d) {
+            clearTimeout(t);
+            highlightLinedUpMarey(d);
+            d3.select(this).moveToFront();
+          })
+          .onOnce('mouseout', 'path', function () {
+            clearTimeout(t);
+            t = setTimeout(unhighlightLinedUpMarey, 100);
+          });
+    }
+
+    linedUpMareyLines
+        .enter()
+      .append('path')
+        .attr('class', function (d) { return 'mareyline ' + d.line; });
+    linedUpMareyLines.call(drawLinedUpLines);
+
+    var linedUpBranchLabel = linedUp.appendOnce('g', 'lined-up-branch-label');
+
+    function labelLinedUp(n, branch) {
+      var x = linedUpMareyMidpointLabelPositions[n] * linedUpWidth - 20;
+      var circle = linedUpBranchLabel.appendOnce('circle', 'green label ' + branch);
+      var y = -2;
+
+      circle.firstTime
+        .attr('r', 7)
+        .attr('cy', y);
+
+      circle.attr('cx', x);
+      
+      var textElem = linedUpBranchLabel.appendOnce('text', 'lineduplabel ' + branch);
+
+      textElem.firstTime
+          .style('fill', 'white')
+          .style('font-weight', 'bold')
+          .style('stroke', 'none')
+          .style('text-anchor', 'middle')
+          .attr('y', y + 4)
+          .text(branch);
+
+      textElem.attr('x', x);
+
+      var branchText = linedUpBranchLabel.appendOnce('text', 'branch-text ' + branch);
+
+      branchText.firstTime
+          .style('fill', 'black')
+          .style('stroke', 'none')
+          .attr('y', y + 4)
+          .text('Branch');
+
+      branchText.attr('x', x + 10);
+    }
+    labelLinedUp(0, 'B');
+    labelLinedUp(2, 'C');
+    labelLinedUp(4, 'D');
+    labelLinedUp(6, 'E');
+
+
+    function modifiedXScale(d) {
+      return linedUpMareyXScaleRatioFromFullMarey * xScale(d) * linedUpWidth / fullMareyWidth;
+    }
+
+    // use the same utility that draws the marey lines in the full marey diagram to 
+    // render them in the lined-up marey diagram
+    function drawLinedUpLines(lines) {
+      lines
+          .attr('transform', function (d) {
+            var firstX = linedUpXScale(d.stops[0].stop);
+            return 'translate(' + firstX + ',0)';
+          })
+          .attr('d', draw(modifiedXScale, linedUpYScale, true));
+    }
+    // Draw additional details when user hovers over a lined-up Marey line
+    function highlightLinedUpMarey(d) {
+      if (frozen) { return; }
+      unhighlightLinedUpMarey();
+      highlightedLinedUpMarey = d;
+      linedUp.appendOnce('text', 'mareyannotation');
+      var last = d.stops[d.stops.length - 1];
+      var first = d.stops[0];
+      var xEnd = linedUpXPlacementScale(first.stop);
+      var xBegin = linedUpXScale(first.stop);
+      var y = linedUpYScale((last.time - first.time));
+      linedUp.appendOnce('text', 'mareyannotation start')
+        .attr('x', xBegin + (linedUpMareyStartingStationLabels[first.stop].anchor === 'start' ?  5 : -5))
+        .attr('y', -2)
+        .style('text-anchor', linedUpMareyStartingStationLabels[first.stop].anchor)
+        .text(moment(first.time * 1000).zone(4).format('h:mma'));
+      linedUp.appendOnce('text', 'mareyannotation clickme')
+        .attr('x', xEnd)
+        .attr('y', 16)
+        .style('text-anchor', 'middle')
+        .classed('light-markup', true)
+        .text('Click for details');
+      linedUp.appendOnce('text', 'mareyannotation end')
+        .attr('x', xEnd)
+        .attr('y', y + 15)
+        .style('text-anchor', 'middle')
+        .text(moment(last.time * 1000).zone(4).format('h:mma'));
+      linedUp.appendOnce('text', 'mareyannotation time')
+        .attr('x', xEnd)
+        .attr('y', y + 30)
+        .style('text-anchor', 'middle')
+        .text(Math.round((last.time - first.time) / 60) + 'm');
+      linedUpOverlay.selectAll('g.mareystops')
+          .data([d])
+          .enter()
+        .append('g')
+          .attr('class', 'mareystops')
+          .call(drawStops, modifiedXScale, linedUpYScale);
+      linedUpOverlay.selectAll('g.mareynames')
+          .data([d])
+          .enter()
+        .append('g')
+          .attr('class', 'mareynames');
+
+      linedUp.selectAll('.mareyline').classed({
+        highlight: function (other) { return other === d; },
+        dimmed: function (other) { return other !== d; }
+      });
+    }
+    function unhighlightLinedUpMarey() {
+      if (!highlightedLinedUpMarey || frozen) { return; }
+      highlightedLinedUpMarey = null;
+      linedUp.selectAll('.mareyannotation').remove();
+      linedUpOverlay.selectAll('*').remove();
+      linedUp.selectAll('.mareyline').classed({
+        highlight: false,
+        dimmed: false
+      });
+    }
+
+
+
+
+
+    /* 4d. Set up listener to zoom in on a particular trip of the lined-up marey when user clicks on it
+     *************************************************************/
+    var TRANSITION_DURATION = 1000;
+    if (!VIZ.ios) {
+      d3.selectAll('.lined-up-marey')
+          .on('click.toggle', function () { freezeHighlightedMarey(null, !frozen); });
+    }
+    // initialize to not frozen
+    freezeHighlightedMarey(highlightedLinedUpMarey, frozen, true);
+
+    function freezeHighlightedMarey(d, freeze, now) {
+      var duration = now ? 0 : TRANSITION_DURATION;
+      highlightedLinedUpMarey = highlightedLinedUpMarey || d;
+      resetScale(linedUpTimeScale);
+      resetScale(linedUpYScale);
+      resetScale(linedUpXScale);
+      linedUpMareyXScaleRatioFromFullMarey = originalLinedUpMareyXScaleRatioFromFullMarey;
+      frozen = freeze;
+      if (highlightedLinedUpMarey && frozen) {
+        // transition all of the pieces to zoom in on just the one trip
+        // also add labels and times for each stop along the trip
+        var max = 1.1*(highlightedLinedUpMarey.end - highlightedLinedUpMarey.begin);
+        tempSetDomain(linedUpTimeScale, [0, max * 1000]);
+        var ratio = max / linedUpYScale.domain()[1];
+        tempSetDomain(linedUpYScale, [0, max]);
+        var start = highlightedLinedUpMarey.stops[0];
+        var end = highlightedLinedUpMarey.stops[highlightedLinedUpMarey.stops.length - 1];
+
+        var startX = linedUpXScale(start.stop);
+        var endX = startX + xScale(header[end.stop + '|' + highlightedLinedUpMarey.line][0]) - xScale(header[start.stop + '|' + highlightedLinedUpMarey.line][0]);
+
+        var dir = linedUpMareyStartingStationLabels[start.stop].anchor;
+        var conversionScale = d3.scale.linear()
+            .domain([startX, endX])
+            .range(dir === 'start' ? [50, linedUpWidth - 50] : [linedUpWidth - 50, 50]);
+        tempSetRange(linedUpXScale, linedUpXScale.range().map(conversionScale));
+        linedUpMareyXScaleRatioFromFullMarey = originalLinedUpMareyXScaleRatioFromFullMarey * 1.5 / ratio;
+        linedUp.selectAll('.mareyannotation').remove();
+        (now ? stationHeaders : stationHeaders.transition().duration(duration))
+          .call(placeStationHeader)
+          .style('opacity', 0);
+        (now ? linedUpBranchLabel : linedUpBranchLabel.transition().duration(duration / 3))
+          .style('opacity', 0);
+      } else {
+        (now ? stationHeaders : stationHeaders.transition().duration(duration))
+          .call(placeStationHeader)
+          .style('opacity', 1);
+        (now ? linedUpBranchLabel : linedUpBranchLabel.transition().delay(2 * duration / 3).duration(duration / 3))
+          .style('opacity', 1);
+      }
+      linedUpOverlay.selectAll('.mareynames').call(drawLabels, modifiedXScale, linedUpYScale);
+      axis.transition().duration(duration).call(linedUpAxis);
+      linedUpOverlay.selectAll('g.mareystops').call(drawStops, modifiedXScale, linedUpYScale, !now);
+      (now ? linedUpMareyLines : linedUpMareyLines.transition().duration(duration)).call(drawLinedUpLines);
+      unhighlightLinedUpMarey();
+    }
+    // draw the time and station name labels on a selected trip
+    function drawLabels(selection, xScale, yScale) {
+      var items = selection
+          .selectAll('.text')
+          .data(function (d) {
+            var startX = xScale(header[d.stops[0].stop + '|' + d.line][0]);
+            var result = d.stops.map(function (stop) {
+              if (!stop) { return null; }
+              var y = yScale(stop.time) - yScale(d.stops[0].time);
+              var x = xScale(header[stop.stop + '|' + d.line][0]) - startX;
+              return {stop: stop, x: x, y: y, dytop: -1, dybottom: 9};
+            });
+
+            // prevent labels from overlapping eachother, iteratively push up/down until no overlap
+            var last = -10;
+            _.sortBy(result, 'y').forEach(function (d) {
+              last += 9;
+              if (last > d.y + d.dybottom) {
+                d.dybottom = last - d.y;
+              }
+              last = d.y + d.dybottom;
+            });
+            last = 1000;
+            _.sortBy(result, 'y').reverse().forEach(function (d) {
+              last -= 9;
+              if (last < d.y + d.dytop) {
+                d.dytop = last - d.y;
+              }
+              last = d.y + d.dytop;
+            });
+            return result;
+          }, function (d, i) { return i; });
+      var labels = items.enter().append('g')
+          .attr('class', 'text');
+      labels.append('text')
+          .attr('dx', function () { return linedUpMareyStartingStationLabels[highlightedLinedUpMarey.stops[0].stop].anchor === 'start' ? 2 : -2; })
+          .attr('dy', function (d) { return d.dytop; })
+          .text(function (d) {
+            return VIZ.fixStationName(idToNode[d.stop.stop].name);
+          })
+          .attr('text-anchor', function () { return linedUpMareyStartingStationLabels[highlightedLinedUpMarey.stops[0].stop].anchor; });
+      labels.append('text')
+          .attr('dx', function () { return linedUpMareyStartingStationLabels[highlightedLinedUpMarey.stops[0].stop].anchor === 'start' ? -2 : 2; })
+          .attr('dy', function (d) { return d.dybottom; })
+          .text(function (d) {
+            return moment(d.stop.time * 1000).zone(4).format('h:mma');
+          })
+          .attr('text-anchor', function () { return linedUpMareyStartingStationLabels[highlightedLinedUpMarey.stops[0].stop].anchor === 'start' ? 'end' : 'start'; });
+
+      items
+          .attr('transform', function (d) {
+            var stop0 = highlightedLinedUpMarey.stops[0].stop;
+            var firstX = linedUpXScale(stop0);
+            return 'translate(' + (d.x + firstX) + ',' + d.y + ')';
+          })
+          .style('opacity', 0);
+
+      items.transition().delay(TRANSITION_DURATION - 300).duration(300)
+        .style('opacity', 1);
+    }
+    // place a dot for each stop on the line
+    function drawStops(selection, xScale, yScale, trans) {
+      var items = selection
+          .selectAll('.point')
+          .data(function (d) {
+            var result = getPointsFromStop(xScale, yScale, d, true).filter(function (stop) { return !!stop; });
+            var offset = linedUpXScale(d.stops[0].stop);
+            result.forEach(function (stop) { stop.offset = offset; });
+            return result;
+          }, function (d, i) { return i; });
+      items.enter()
+        .append('circle')
+          .attr('r', 2)
+          .attr('class', 'point');
+
+      (trans ? items.transition().duration(TRANSITION_DURATION) : items)
+          .attr('cx', function (d) { return d.offset + d[0]; })
+          .attr('cy', function (d) { return d[1]; });
+    }
   }
 
 
@@ -750,6 +1232,22 @@ VIZ.requiresData([
     .on('mouseout', function () {
       mareyContainer.selectAll('.line-dimmed').classed('line-dimmed', false);
     });
+
+  // Setup the links in text that highlight part of the Marey diagram
+  // <a href="#" data-lo="start hour of day" data-hi="end hour of day" class="lined-up-highlight">...
+  d3.selectAll('.lined-up-highlight')
+    .on('click', function () {
+      d3.event.preventDefault();
+    })
+    .on('mouseover', function () {
+      var lo = +d3.select(this).attr('data-lo');
+      var hi = +d3.select(this).attr('data-hi');
+      brush.extent([lo * 60 * 60 * 1000, hi * 60 * 60 * 1000]);
+      d3.selectAll('g.brush').call(brush).on('mousedown.brush', null).on('touchstart.brush', null);
+      brushed();
+    });
+
+
 
 
 
@@ -790,6 +1288,17 @@ VIZ.requiresData([
     hoveredTrip = d.trip;
     hover();
   }
+  function brushed() {
+    var lo = brush.extent()[0] / 1000;
+    var hi = brush.extent()[1] / 1000;
+    d3.selectAll('.lined-up .mareyline')
+        .classed('brush-highlighted', function (d) {
+          return lo < d.secs && hi > d.secs;
+        })
+        .classed('brush-dimmed', function (d) {
+          return lo >= d.secs || hi <= d.secs;
+        });
+  }
   function hover() {
     d3.selectAll('.hoverable')
       .classed('hover', function (d) { return d.trip === hoveredTrip; });
@@ -823,5 +1332,20 @@ VIZ.requiresData([
     var midpoint = d3.interpolate(fromPos, toPos)(ratio);
     var angle = Math.atan2(toPos[1] - fromPos[1], toPos[0] - fromPos[0]) + Math.PI / 2;
     return [midpoint[0] + Math.cos(angle) * mapGlyphTrainCircleRadius, midpoint[1] + Math.sin(angle) * mapGlyphTrainCircleRadius ];
+  }
+  function tempSetDomain(scale, domain) {
+    scale.oldDomain = scale.oldDomain || scale.domain();
+    scale.domain(domain);
+  }
+  function tempSetRange(scale, range) {
+    scale.oldRange = scale.oldRange || scale.range();
+    scale.range(range);
+  }
+
+  function resetScale(scale) {
+    if (scale.oldDomain) { scale.domain(scale.oldDomain); }
+    if (scale.oldRange) { scale.range(scale.oldRange); }
+    scale.oldDomain = null;
+    scale.oldRange = null;
   }
 });

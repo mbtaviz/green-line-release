@@ -57,16 +57,14 @@
   <!-- Header -->
   <div class="full-width header">
     <div class="container">
-      <div class="row">
-        <div class="title">
-          <h1>MBTA Releases Green Line Data</h1>
-          <p class="authors">
-            <a href="https://twitter.com/msb5014" target="_blank">Mike Barry</a>
-            and
-            <a href="https://twitter.com/bmcard" target="_blank">Brian Card</a>
-            - October 28, 2014
-          </p>
-        </div>
+      <div class="title">
+        <h1>MBTA Releases Green Line Data</h1>
+        <p class="authors">
+          <a href="https://twitter.com/msb5014" target="_blank">Mike Barry</a>
+          and
+          <a href="https://twitter.com/bmcard" target="_blank">Brian Card</a>
+          - October 28, 2014
+        </p>
       </div>
     </div>
   </div>
@@ -74,12 +72,10 @@
   <!-- The Trains -->
   <div class="full-width section-trains">
     <div class="container">
-      <div class="row">
-        <p>Boston’s Massachusetts Bay Transit Authority (MBTA) operates four main subway lines: Red, Orange, Blue, and Green.  When we built <a href="http://mbtaviz.github.io/" target="_blank">Visualizing MBTA Data</a> in early 2014, realtime train location data was available for all but the Green Line. On October 23, 2014 the <a href="http://mbta.com/about_the_mbta/news_events/?id=6442453268" target="_blank"> MBTA began publishing this data</a>.</p>
-        <p>The other lines use a modified freight tracking system with periodic checkpoints to stop a train whenever it gets too close to next train. Since this system also relays checkpoint crossings back to the control center, it provided the infrastructure to track trains early on. The Green Line, however does not use such a system. The trains were not tracked and therefore no location data was available.</p>
-        <p>The MBTA has been outfitting the Green Line with GPS devices to track the trains while they are above ground and is now publishing this data for close to 98% of the trains to their public API. We collected the first several days of data and show it below in a visualization developed by Étienne-Jules Marey called a “time-space” or “Marey” diagram. Each vertical line represents a station, and time extends from top to bottom. Steeper lines indicate slower trains.</p>
-        <p>We attempt to shed light on the behavior of the Green Line using this newly released data.  While some gaps in data are due to trains without tracking devices, we can still start to see patterns emerge.  The Green Line appears to exhibit more consistent volatility than other lines, often due to outbound “clumping” which affects wait times in both directions. This “clumping” originates underground where we can't yet see the trains.  The inbound D branch looks most reliable, and outbound B branch looks least reliable.  On Friday, late-night T service takes passengers out of the city until 3 am.  What else do you notice?</p>
-      </div>
+      <p>Boston’s Massachusetts Bay Transit Authority (MBTA) operates four main subway lines: Red, Orange, Blue, and Green.  When we built <a href="http://mbtaviz.github.io/" target="_blank">Visualizing MBTA Data</a> in early 2014, realtime train location data was available for all but the Green Line. On October 23, 2014 the <a href="http://mbta.com/about_the_mbta/news_events/?id=6442453268" target="_blank"> MBTA began publishing this data</a>.</p>
+      <p>The other lines use a modified freight tracking system with periodic checkpoints to stop a train whenever it gets too close to next train. Since this system also relays checkpoint crossings back to the control center, it provided the infrastructure to track trains early on. The Green Line, however does not use such a system. The trains were not tracked and therefore no location data was available.</p>
+      <p>The MBTA has been outfitting the Green Line with GPS devices to track the trains while they are above ground and is now publishing this data for close to 98% of the trains to their public API. We collected the first several days of data and show it below in a visualization developed by Étienne-Jules Marey called a “time-space” or “Marey” diagram. Each vertical line represents a station, and time extends from top to bottom. Steeper lines indicate slower trains.</p>
+      <p>We attempt to shed light on the behavior of the Green Line using this newly released data.  While some gaps in data are due to trains without tracking devices, we can still start to see patterns emerge.  The Green Line appears to exhibit more consistent volatility than other lines, often due to outbound “clumping” which affects wait times in both directions. This “clumping” originates underground where we can't yet see the trains.  The inbound D branch looks most reliable, and outbound B branch looks least reliable.  On Friday, late-night T service takes passengers out of the city until 3 am.  What else do you notice?</p>
     </div>
 
     <div class="loading-indicator">
@@ -125,11 +121,28 @@
       </div>
     </div>
 
-    <div class="container">
-      <div class="row">
-        <p>Mike Barry and Brian Card are both part-time graduate students at <a href="http://www.wpi.edu/" target="_blank">WPI</a> and created <a href="http://mbtaviz.github.io/" target="_blank">Visualizing MBTA Data</a> as a course project in spring 2014. We built this weekend project as an add-on when Green Line data became available.</p>
-        <p>The source code is available on <a href="https://github.com/mbtaviz/green-line-release/" target="_blank">GitHub</a>. For any questions, please reach out to <a href="https://twitter.com/msb5014" target="_blank">Mike Barry</a> or <a href="https://twitter.com/bmcard" target="_blank">Brian Card</a> on Twitter.</p>
+    <!-- Lined-up Marey diagram -->
+    <div class="full-width lined-up-marey-container">
+      <div class="container">
+        <p>
+          To better compare individual trips, the chart below shows all trips from the above diagram lined up at the first stations where GPS signals appear above ground.  You can see the range of fastest to slowest trips, as well as variation in trip times based on the time of day.
+          The trains are fastest during the <a href="#" data-lo="4" data-hi="8" class="hover-link lined-up-highlight">early morning</a> and slow down during the <a href="#" data-lo="16" data-hi="19" class="hover-link lined-up-highlight">afternoon rush-hour</a>.  Trains are slightly faster in the <a href="#" data-lo="10" data-hi="16" class="hover-link lined-up-highlight">middle of the day</a> compared to the afternoon rush-hour, but the difference is not as drastic as the red line which can be seen in <a href="http://mbtaviz.github.io/#trains">Visualizing MBTA Data</a>.
+          Two trains move very slowly outbound on the D branch to pick up final passengers
+          <a href="#" data-lo="0" data-hi="1" class="hover-link lined-up-highlight">between midnight and 1 am</a>.
+          Apart from that, the D branch appears to have the most consistent travel times when compared to the others, despite covering a much longer distance.</p>
+          <p>You can see the variation in travel time by looking at how close the lines are together, notice that the trips in the D branch are more tightly clustered than the B branch for example from <a href="#" data-lo="10" data-hi="14" class="hover-link lined-up-highlight">late-morning to afternoon</a>.
+          Hover over the time scale on the left to highlight trips during different parts of the day.  Click on a line to see what time the train was at each stop.
+        </p>
+
+        <!-- Lined-up Marey -->
+        <div class="lined-up-marey"></div>
+
       </div>
+    </div>
+
+    <div class="container">
+      <p>Mike Barry and Brian Card are both part-time graduate students at <a href="http://www.wpi.edu/" target="_blank">WPI</a> and created <a href="http://mbtaviz.github.io/" target="_blank">Visualizing MBTA Data</a> as a course project in spring 2014. We built this weekend project as an add-on when Green Line data became available.</p>
+      <p>The source code is available on <a href="https://github.com/mbtaviz/green-line-release/" target="_blank">GitHub</a>. For any questions, please reach out to <a href="https://twitter.com/msb5014" target="_blank">Mike Barry</a> or <a href="https://twitter.com/bmcard" target="_blank">Brian Card</a> on Twitter.</p>
     </div>
 
     <div class="container section-share">
